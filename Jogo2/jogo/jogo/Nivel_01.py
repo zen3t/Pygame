@@ -31,16 +31,25 @@ class Soldado(pygame.sprite.Sprite):
         self.virar = False
         self.lista_animacao = []
         self.index = 0
+        self.atualizar_tempo = pygame.time.get_ticks()
         for i in range(5):
             img = pygame.image.load(f"img/{self.jogador_tipo}/jogador_img/{i}.png")
-
-        img = pygame.image.load(f"img/{self.jogador_tipo}/jogador_img/0.png")
-        self.image = pygame.transform.scale(
+            img= pygame.transform.scale(
             img, (int(img.get_width() * scale), int(img.get_height() * scale))
         )
-
+            self.lista_animacao.append(img)
+            self.image = self.lista_animacao[self.index]
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
+
+    def atualizar_animacao(self):
+        ANIMACAO_FRESH = 90
+        self.image = self.lista_animacao[self.index]
+        if pygame.time.get_ticks() - self.atualizar_tempo > ANIMACAO_FRESH:
+            self.atualizar_tempo = pygame.time.get_ticks()
+            self.index += 1
+        if self.index  >= len(self.lista_animacao):
+            self.index = 0
 
     def movimento(self, movimento_esquerda, movimento_direita):
 
@@ -64,12 +73,15 @@ class Soldado(pygame.sprite.Sprite):
 
 
 jogador = Soldado("jogador",200, 200, 2, 5)
+inimigo = Soldado("inimigo",500, 200, 2, 5)
 
 run = True
 while run:
     relogio.tick(FPS)
     desenho_bg()
+    jogador.atualizar_animacao()
     jogador.desenho()
+    inimigo.desenho()
     jogador.movimento(movimento_direita, movimento_esquerda)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
