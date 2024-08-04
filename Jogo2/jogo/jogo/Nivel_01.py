@@ -34,13 +34,16 @@ def desenho_bg():
 
 
 class Soldado(pygame.sprite.Sprite):
-    def __init__(self, jogador_tipo, x, y, scale, velocidade):
+    def __init__(self, jogador_tipo, x, y, scale, velocidade, municao):
 
         pygame.sprite.Sprite.__init__(self)
         self.vivo = True
         self.jogador_tipo = jogador_tipo
         self.velocidade = velocidade
+        self.municao = municao
+        self.inicio_municao = municao
         self.vel_y = 0
+        self.atirar_bala_count = 0
         self.direcao = 1
         self.pular = False
         self.no_ar = True
@@ -68,6 +71,11 @@ class Soldado(pygame.sprite.Sprite):
         self.image = self.animacao_lista[self.acao][self.frame_index]
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
+
+    def atualizar(self):
+        self.atualizar_animacao()
+        if self.atirar_bala_count > 0:
+            self.atirar_bala_count -= 1
 
     def movimento(self, movimento_esquerda, movimento_direita):
 
@@ -103,6 +111,17 @@ class Soldado(pygame.sprite.Sprite):
         self.rect.x += dx
         self.rect.y += dy
 
+    def atirar(self):
+        if self.atirar_bala_count == 0 and self.municao > 0:
+            self.atirar_bala_count = 20
+            bala = Bala(
+                self.rect.centerx + (0.6 * self.rect.size[0] * self.direcao),
+                self.rect.centery,
+                self.direcao,
+            )
+            bala_grupo.add(bala)
+            self.municao -= 1
+
     def atualizar_animacao(self):
         ANIMACAO_FRESH = 100
 
@@ -130,7 +149,7 @@ class Bala(pygame.sprite.Sprite):
     def __init__(self, x, y, direcao):
 
         pygame.sprite.Sprite.__init__(self)
-        self.veloc = 10
+        self.velocidade = 10
         self.image = bala_img
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
@@ -138,7 +157,7 @@ class Bala(pygame.sprite.Sprite):
 
     def update(self):
 
-        self.rect.x += self.veloc * self.direcao
+        self.rect.x += self.velocidade * self.direcao
 
         if self.rect.right < 0 or self.rect.left > TELA_LARGURA:
 
@@ -148,8 +167,8 @@ class Bala(pygame.sprite.Sprite):
 bala_grupo = pygame.sprite.Group()
 
 
-jogador = Soldado("jogador", 200, 200, 2, 5)
-inimigo = Soldado("inimigo", 400, 200, 2, 5)
+jogador = Soldado("jogador", 200, 200, 2, 5, 20)
+inimigo = Soldado("inimigo", 400, 200, 2, 5, 20)
 
 
 run = True
@@ -158,19 +177,14 @@ while run:
 
     desenho_bg()
 
-    jogador.atualizar_animacao()
+    jogador.atualizar()
     jogador.desenho(tela)
     inimigo.desenho(tela)
     bala_grupo.update()
     bala_grupo.draw(tela)
     if jogador.vivo:
         if atirar:
-            bala = Bala(
-                jogador.rect.centerx + (0.6 * jogador.rect.size[0] * jogador.direcao),
-                jogador.rect.centery,
-                jogador.direcao,
-            )
-            bala_grupo.add(bala)
+            jogador.atirar()
         if jogador.no_ar:
             jogador.atualizar_acao(2)
 
