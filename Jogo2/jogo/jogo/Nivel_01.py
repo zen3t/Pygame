@@ -19,22 +19,27 @@ GRAVIDADE = 0.75
 movimento_esquerda = False
 movimento_direita = False
 atirar = False
+granada = False
+granada_jogada = False
+
 
 bala_img = pygame.image.load("img/icons/bala.png").convert_alpha()
+granada_img = pygame.image.load("img/icons/granada.png").convert_alpha()
 
-BG = (233, 212, 96)
-GREEN = (60, 179, 113)
-BLUE = (0, 0, 255)
+BG = (169, 169, 169)
+# GREEN = (60, 179, 113)
+# BLUE = (0, 0, 255)
 
 
 def desenho_bg():
     tela.fill(BG)
-    pygame.draw.line(tela, GREEN, (0, 300), (TELA_LARGURA, 300))
-    pygame.draw.line(tela, BLUE, (0, 635), (TELA_LARGURA, 635))
+
+    # pygame.draw.line(tela, GREEN, (0, 300), (TELA_LARGURA, 300))
+    # pygame.draw.line(tela, BLUE, (0, 635), (TELA_LARGURA, 635))
 
 
 class Soldado(pygame.sprite.Sprite):
-    def __init__(self, jogador_tipo, x, y, scale, velocidade, municao):
+    def __init__(self, jogador_tipo, x, y, scale, velocidade, municao, granadas):
 
         pygame.sprite.Sprite.__init__(self)
         self.vivo = True
@@ -43,7 +48,10 @@ class Soldado(pygame.sprite.Sprite):
         self.municao = municao
         self.inicio_municao = municao
         self.vel_y = 0
+        self.saude_vida = 100
+        #        self.max_vida = self.max_vida
         self.atirar_bala_count = 0
+        self.granadas = granadas
         self.direcao = 1
         self.pular = False
         self.no_ar = True
@@ -53,7 +61,7 @@ class Soldado(pygame.sprite.Sprite):
         self.acao = 0
         self.atualizar_tempo = pygame.time.get_ticks()
 
-        animacao_tipo = ["jogador_img", "Correr", "pular"]
+        animacao_tipo = ["jogador_img", "Correr", "pular", "Morto"]
 
         for animacao in animacao_tipo:
             temp_list = []
@@ -74,6 +82,7 @@ class Soldado(pygame.sprite.Sprite):
 
     def atualizar(self):
         self.atualizar_animacao()
+        self.checar_a_vida()
         if self.atirar_bala_count > 0:
             self.atirar_bala_count -= 1
 
@@ -132,7 +141,10 @@ class Soldado(pygame.sprite.Sprite):
             self.frame_index += 1
 
         if self.frame_index >= len(self.animacao_lista[self.acao]):
-            self.frame_index = 0
+            if self.acao == 3:
+                self.frame_index = len(self.animacao_lista[self.acao]) - 1
+            else:
+                self.frame_index = 0
 
     def atualizar_acao(self, new_action):
         if new_action != self.acao:
@@ -140,6 +152,13 @@ class Soldado(pygame.sprite.Sprite):
 
             self.frame_index = 0
             self.atualizar_tempo = pygame.time.get_ticks()
+
+    def checar_a_vida(self):
+        if self.saude_vida <= 0:
+            self.saude_vida = 0
+            self.velocidade = 0
+            self.vivo = False
+            self.atualizar_acao(3)
 
     def desenho(self, tela):
         tela.blit(pygame.transform.flip(self.image, self.virar, False), self.rect)
@@ -160,15 +179,38 @@ class Bala(pygame.sprite.Sprite):
         self.rect.x += self.velocidade * self.direcao
 
         if self.rect.right < 0 or self.rect.left > TELA_LARGURA:
-
             self.kill()
+
+        if pygame.sprite.spritecollide(jogador, bala_grupo, False):
+            if jogador.vivo:
+                jogador.saude_vida -= 5
+                self.kill()
+
+        if pygame.sprite.spritecollide(inimigo, bala_grupo, False):
+            if inimigo.vivo:
+                inimigo.saude_vida -= 25
+                self.kill()
+
+
+class Granada(pygame.sprite.Sprite):
+    def __init__(self, x, y, direcao):
+
+        pygame.sprite.Sprite.__init__(self)
+        self.tempo = 100
+        self.vel_y = -10
+        self.velocidade = 7
+        self.image = granada_img
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.direcao = direcao
 
 
 bala_grupo = pygame.sprite.Group()
+granada_grupo = pygame.sprite.Group()
 
 
-jogador = Soldado("jogador", 200, 200, 2, 5, 20)
-inimigo = Soldado("inimigo", 400, 200, 2, 5, 20)
+jogador = Soldado("jogador", 200, 200, 2, 5, 20, 6)
+inimigo = Soldado("inimigo", 400, 200, 2, 5, 20, 0)
 
 
 run = True
@@ -180,11 +222,23 @@ while run:
     jogador.atualizar()
     jogador.desenho(tela)
     inimigo.desenho(tela)
+    inimigo.atualizar()
     bala_grupo.update()
     bala_grupo.draw(tela)
+    granada_grupo.update()
+    granada_grupo.draw(tela)
     if jogador.vivo:
         if atirar:
             jogador.atirar()
+        elif granada and granada_jogada == False and jogador.granadas > 0:
+            granada = Granada(
+                jogador.rect.centerx + (0.5 * jogador.rect.size[0] * jogador.direcao),
+                jogador.rect.top,
+                jogador.direcao,
+            )
+            granada_grupo.add(granada)
+            granada_jogada = True
+            jogador.granadas -= 1
         if jogador.no_ar:
             jogador.atualizar_acao(2)
 
@@ -208,6 +262,9 @@ while run:
             if event.key == pygame.K_SPACE:
                 atirar = True
 
+            if event.key == pygame.K_q:
+                granada = True
+
             if event.key == pygame.K_w and jogador.vivo:
                 jogador.pular = True
             if event.key == pygame.K_ESCAPE:
@@ -221,6 +278,9 @@ while run:
             if event.key == pygame.K_SPACE:
                 atirar = False
 
+            if event.key == pygame.K_q:
+                granada = False
+                granada_jogada = False
     pygame.display.update()
 
 pygame.quit()
