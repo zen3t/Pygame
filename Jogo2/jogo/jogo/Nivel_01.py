@@ -204,9 +204,49 @@ class Granada(pygame.sprite.Sprite):
         self.rect.center = (x, y)
         self.direcao = direcao
 
+    def update(self):
+        self.vel_y += GRAVIDADE
+        dx = self.direcao * self.velocidade
+        dy = self.vel_y
+
+        if self.rect.bottom + dy > 300:
+            dy = 300 - self.rect.bottom
+            self.velocidade = 0
+        if self.rect.left + dx < 0 or self.rect.right + dx > TELA_LARGURA:
+            self.direcao *= -1
+            dx = self.direcao * self.velocidade
+
+        self.rect.x += dx
+        self.rect.y += dy
+
+        self.tempo -= 1
+        if self.tempo <= 0:
+            self.kill()
+            explode = Explode(self.rect.x, self.rect.y, 0.5)
+            explode_grupo.add(explode)
+
+
+class Explode(pygame.sprite.Sprite):
+    def __init__(self, x, y, scale):
+
+        pygame.sprite.Sprite.__init__(self)
+        self.images = []
+        for num in range(1, 6):
+            img = pygame.image.load(f"img/explode/exp{num}.png").convert_alpha()
+            img = pygame.transform.scale(
+                img, (int(img.get_width() * scale), int(img.get_height() * scale))
+            )
+            self.images.append(img)
+        self.frame_imdex = 0
+        self.image = self.images[self.frame_imdex]
+        self.rect = self.image.get_rect()
+        self.rect.center = (x, y)
+        self.counter = 0
+
 
 bala_grupo = pygame.sprite.Group()
 granada_grupo = pygame.sprite.Group()
+explode_grupo = pygame.sprite.Group()
 
 
 jogador = Soldado("jogador", 200, 200, 2, 5, 20, 6)
@@ -223,8 +263,13 @@ while run:
     jogador.desenho(tela)
     inimigo.desenho(tela)
     inimigo.atualizar()
+
     bala_grupo.update()
     bala_grupo.draw(tela)
+
+    explode_grupo.update()
+    explode_grupo.draw(tela)
+
     granada_grupo.update()
     granada_grupo.draw(tela)
     if jogador.vivo:
