@@ -15,7 +15,7 @@ relogio = pygame.time.Clock()
 FPS = 60
 
 GRAVIDADE = 0.75
-
+TERRA_TAMANHO = 40
 movimento_esquerda = False
 movimento_direita = False
 atirar = False
@@ -186,10 +186,11 @@ class Bala(pygame.sprite.Sprite):
                 jogador.saude_vida -= 5
                 self.kill()
 
-        if pygame.sprite.spritecollide(inimigo, bala_grupo, False):
-            if inimigo.vivo:
-                inimigo.saude_vida -= 25
-                self.kill()
+        for inimigo in inimigo_grupo:
+            if pygame.sprite.spritecollide(inimigo, bala_grupo, False):
+                if inimigo.vivo:
+                    inimigo.saude_vida -= 25
+                    self.kill()
 
 
 class Granada(pygame.sprite.Sprite):
@@ -225,6 +226,20 @@ class Granada(pygame.sprite.Sprite):
             explode = Explode(self.rect.x, self.rect.y, 0.5)
             explode_grupo.add(explode)
 
+            if (
+                abs(self.rect.centerx - jogador.rect.centerx) < TERRA_TAMANHO * 2
+                and abs(self.rect.centery - jogador.rect.centery) < TERRA_TAMANHO * 2
+            ):
+                jogador.saude_vida -= 50
+            for inimigo in inimigo_grupo:
+
+                if (
+                    abs(self.rect.centerx - inimigo.rect.centerx) < TERRA_TAMANHO * 2
+                    and abs(self.rect.centery - inimigo.rect.centery)
+                    < TERRA_TAMANHO * 2
+                ):
+                    inimigo.saude_vida -= 50
+
 
 class Explode(pygame.sprite.Sprite):
     def __init__(self, x, y, scale):
@@ -237,13 +252,25 @@ class Explode(pygame.sprite.Sprite):
                 img, (int(img.get_width() * scale), int(img.get_height() * scale))
             )
             self.images.append(img)
-        self.frame_imdex = 0
-        self.image = self.images[self.frame_imdex]
+        self.frame_index = 0
+        self.image = self.images[self.frame_index]
         self.rect = self.image.get_rect()
         self.rect.center = (x, y)
         self.counter = 0
 
+    def update(self):
+        EXPLODE_VELOCIDADE = 4
+        self.counter += 1
+        if self.counter >= EXPLODE_VELOCIDADE:
+            self.counter = 0
+            self.frame_index += 1
+        if self.frame_index >= len(self.images):
+            self.kill()
+        else:
+            self.image = self.images[self.frame_index]
 
+
+inimigo_grupo = pygame.sprite.Group()
 bala_grupo = pygame.sprite.Group()
 granada_grupo = pygame.sprite.Group()
 explode_grupo = pygame.sprite.Group()
@@ -251,7 +278,7 @@ explode_grupo = pygame.sprite.Group()
 
 jogador = Soldado("jogador", 200, 200, 2, 5, 20, 6)
 inimigo = Soldado("inimigo", 400, 200, 2, 5, 20, 0)
-
+inimigo_grupo.add(inimigo)
 
 run = True
 while run:
